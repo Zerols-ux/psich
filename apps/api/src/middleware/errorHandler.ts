@@ -1,15 +1,26 @@
 import type { ErrorRequestHandler, NextFunction, Request, Response } from 'express';
 import { logger } from '../lib/logger.js';
 
+const STATUS_CODES: Record<number, string> = {
+  400: 'BAD_REQUEST',
+  401: 'UNAUTHORIZED',
+  403: 'FORBIDDEN',
+  404: 'NOT_FOUND',
+  409: 'CONFLICT',
+  422: 'UNPROCESSABLE_ENTITY',
+  429: 'TOO_MANY_REQUESTS',
+  500: 'INTERNAL_ERROR',
+};
+
 export class HttpError extends Error {
   public readonly status: number;
   public readonly code: string;
   public readonly details?: Record<string, unknown>;
 
-  constructor(status: number, code: string, message: string, details?: Record<string, unknown>) {
+  constructor(status: number, message: string, details?: Record<string, unknown>) {
     super(message);
     this.status = status;
-    this.code = code;
+    this.code = STATUS_CODES[status] ?? 'ERROR';
     this.details = details;
   }
 }

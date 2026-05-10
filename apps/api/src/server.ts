@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { corsOrigins, env } from './env.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import authRouter from './routes/auth.js';
 import { healthRouter } from './routes/health.js';
 
 export function createServer(): Express {
@@ -28,6 +29,7 @@ export function createServer(): Express {
 
   app.use(healthRouter);
   app.use('/api', healthRouter);
+  app.use('/api/auth', authRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

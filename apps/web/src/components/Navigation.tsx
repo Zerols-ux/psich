@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { AuthMenu } from './AuthMenu';
 
 const links = [
   { href: '/courses', label: 'Курси' },
@@ -23,12 +24,7 @@ export function Navigation() {
           ))}
         </nav>
 
-        <Link
-          href="/login"
-          className="rounded bg-gold px-5 py-2 text-xs font-semibold text-bg transition hover:bg-gold/90"
-        >
-          Увійти
-        </Link>
+        <AuthMenu />
       </div>
     </header>
   );
