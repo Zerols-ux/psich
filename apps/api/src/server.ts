@@ -6,6 +6,8 @@ import morgan from 'morgan';
 import { corsOrigins, env } from './env.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import authRouter from './routes/auth.js';
+import categoriesRouter from './routes/categories.js';
+import coursesRouter from './routes/courses.js';
 import { healthRouter } from './routes/health.js';
 
 export function createServer(): Express {
@@ -30,6 +32,8 @@ export function createServer(): Express {
   app.use(healthRouter);
   app.use('/api', healthRouter);
   app.use('/api/auth', authRouter);
+  app.use('/api/categories', categoriesRouter);
+  app.use('/api/courses', coursesRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

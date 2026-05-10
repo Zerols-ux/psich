@@ -17,6 +17,7 @@
     "db:generate": "npm run -w @psich/api prisma:generate",
     "db:migrate": "npm run -w @psich/api prisma:migrate",
     "db:push": "npm run -w @psich/api prisma:push",
+    "db:seed": "npm run -w @psich/api prisma:seed",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down"
   },
