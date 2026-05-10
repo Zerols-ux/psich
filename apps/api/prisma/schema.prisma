@@ -1,0 +1,226 @@
+// Psyplatform DB schema
+// Source of truth for the data model. Frontends consume the parallel TS types
+// from `@psich/types`; keep the two in sync.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  ADMIN
+}
+
+enum LessonType {
+  VIDEO
+  TEXT
+  PDF
+  WEBINAR
+}
+
+enum OrderStatus {
+  PENDING
+  PENDING_VERIFICATION
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  LIQPAY
+  MONOBANK
+}
+
+model User {
+  id           String           @id @default(uuid()) @db.Uuid
+  email        String           @unique
+  name         String
+  avatarUrl    String?          @map("avatar_url")
+  googleId     String?          @unique @map("google_id")
+  passwordHash String?          @map("password_hash")
+  role         UserRole         @default(STUDENT)
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  enrollments  Enrollment[]
+  orders       Order[]
+  progress     LessonProgress[]
+  certificates Certificate[]
+  comments     Comment[]
+
+  @@index([role])
+  @@map("users")
+}
+
+model Category {
+  id      String   @id @default(uuid()) @db.Uuid
+  name    String
+  slug    String   @unique
+  courses Course[]
+
+  @@map("categories")
+}
+
+model Course {
+  id           String        @id @default(uuid()) @db.Uuid
+  title        String
+  slug         String        @unique
+  description  String        @db.Text
+  thumbnailUrl String?       @map("thumbnail_url")
+  price        Decimal       @db.Decimal(10, 2)
+  isPublished  Boolean       @default(false) @map("is_published")
+  categoryId   String?       @map("category_id") @db.Uuid
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  category     Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  lessons      Lesson[]
+  enrollments  Enrollment[]
+  orders       Order[]
+  certificates Certificate[]
+
+  @@index([categoryId])
+  @@index([isPublished])
+  @@map("courses")
+}
+
+model Lesson {
+  id         String           @id @default(uuid()) @db.Uuid
+  courseId   String           @map("course_id") @db.Uuid
+  title      String
+  type       LessonType
+  youtubeUrl String?          @map("youtube_url")
+  contentMd  String?          @map("content_md") @db.Text
+  pdfUrl     String?          @map("pdf_url")
+  meetLink   String?          @map("meet_link")
+  webinarAt  DateTime?        @map("webinar_at")
+  isFree     Boolean          @default(false) @map("is_free")
+  orderIndex Int              @default(0) @map("order_index")
+  createdAt  DateTime         @default(now()) @map("created_at")
+  updatedAt  DateTime         @updatedAt @map("updated_at")
+
+  course   Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress LessonProgress[]
+  comments Comment[]
+
+  @@index([courseId, orderIndex])
+  @@map("lessons")
+}
+
+model Enrollment {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  courseId   String   @map("course_id") @db.Uuid
+  enrolledAt DateTime @default(now()) @map("enrolled_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+  @@map("enrollments")
+}
+
+model Order {
+  id              String          @id @default(uuid()) @db.Uuid
+  userId          String          @map("user_id") @db.Uuid
+  courseId        String          @map("course_id") @db.Uuid
+  amount          Decimal         @db.Decimal(10, 2)
+  status          OrderStatus     @default(PENDING)
+  paymentProvider PaymentProvider @map("payment_provider")
+  providerOrderId String?         @map("provider_order_id")
+  promoCodeId     String?         @map("promo_code_id") @db.Uuid
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Restrict)
+  course    Course     @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  promoCode PromoCode? @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([courseId])
+  @@index([status])
+  @@index([providerOrderId])
+  @@map("orders")
+}
+
+model LessonProgress {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  lessonId    String    @map("lesson_id") @db.Uuid
+  completed   Boolean   @default(false)
+  completedAt DateTime? @map("completed_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId])
+  @@map("lesson_progress")
+}
+
+model Certificate {
+  id       String   @id @default(uuid()) @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  courseId String   @map("course_id") @db.Uuid
+  pdfUrl   String   @map("pdf_url")
+  version  Int      @default(1)
+  issuedAt DateTime @default(now()) @map("issued_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId, version])
+  @@index([userId])
+  @@map("certificates")
+}
+
+model Comment {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  lessonId  String   @map("lesson_id") @db.Uuid
+  body      String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId, createdAt])
+  @@map("comments")
+}
+
+model PromoCode {
+  id              String    @id @default(uuid()) @db.Uuid
+  code            String    @unique
+  discountPercent Int       @map("discount_percent")
+  maxUses         Int       @default(0) @map("max_uses")
+  usedCount       Int       @default(0) @map("used_count")
+  expiresAt       DateTime? @map("expires_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  orders Order[]
+
+  @@map("promo_codes")
+}
+
+model BlogPost {
+  id          String    @id @default(uuid()) @db.Uuid
+  title       String
+  slug        String    @unique
+  contentMd   String    @map("content_md") @db.Text
+  coverUrl    String?   @map("cover_url")
+  isPublished Boolean   @default(false) @map("is_published")
+  publishedAt DateTime? @map("published_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([isPublished, publishedAt])
+  @@map("blog_posts")
+}
