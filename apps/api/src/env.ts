@@ -23,7 +23,12 @@ const envSchema = z.object({
     .positive()
     .default(60 * 60 * 24 * 30),
   COOKIE_DOMAIN: z.string().optional(),
-  COOKIE_SECURE: z.coerce.boolean().default(false),
+  // z.coerce.boolean() uses Boolean(), which treats "false" as truthy. Parse the
+  // env string explicitly so COOKIE_SECURE=false works as intended.
+  COOKIE_SECURE: z
+    .string()
+    .default('false')
+    .transform((v) => v === 'true' || v === '1'),
 });
 
 const parsed = envSchema.safeParse(process.env);

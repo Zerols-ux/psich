@@ -50,6 +50,19 @@ describe('POST /api/auth/register', () => {
     expect(res.body.error.code).toBe('CONFLICT');
   });
 
+  it('returns 409 (not 500) when two concurrent registrations race on the same email', async () => {
+    // Fire both before either resolves so they both pass the findUnique check
+    // and one of them hits the unique-constraint error path.
+    const [a, b] = await Promise.all([
+      request(app).post('/api/auth/register').send(VALID),
+      request(app).post('/api/auth/register').send(VALID),
+    ]);
+    const statuses = [a.status, b.status].sort((x, y) => x - y);
+    expect(statuses).toEqual([201, 409]);
+    const winner = a.status === 201 ? a : b;
+    expect(winner.body.user.email).toBe(VALID.email);
+  });
+
   it('rejects payload that fails Zod validation with 400', async () => {
     const res = await request(app)
       .post('/api/auth/register')

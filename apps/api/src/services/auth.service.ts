@@ -1,4 +1,4 @@
-import type { PrismaClient, User } from '@prisma/client';
+import { Prisma, type PrismaClient, type User } from '@prisma/client';
 import { HttpError } from '../middleware/errorHandler.js';
 import { hashPassword, verifyPassword } from '../lib/password.js';
 import { generateRefreshToken, hashRefreshToken, signAccessToken } from '../lib/tokens.js';
@@ -45,9 +45,20 @@ export async function register(
     throw new HttpError(409, 'User with this email already exists');
   }
   const passwordHash = await hashPassword(input.password);
-  const user = await ctx.prisma.user.create({
-    data: { email, name: input.name.trim(), passwordHash },
-  });
+  let user: User;
+  try {
+    user = await ctx.prisma.user.create({
+      data: { email, name: input.name.trim(), passwordHash },
+    });
+  } catch (err) {
+    // Two concurrent registrations with the same email can both pass the
+    // findUnique check above. The unique constraint on `email` then surfaces a
+    // P2002 from the second create — translate it back to a clean 409.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      throw new HttpError(409, 'User with this email already exists');
+    }
+    throw err;
+  }
   return createSession(ctx, user);
 }
 
