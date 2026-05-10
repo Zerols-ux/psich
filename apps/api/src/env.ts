@@ -22,6 +22,15 @@ if (!parsed.success) {
 
 export const env = parsed.data;
 
+// Prisma Client reads DATABASE_URL directly from process.env at the time it
+// connects to the database; it does not go through this zod schema. If the
+// caller did not export DATABASE_URL (e.g. fresh dev clone with no .env file
+// inside apps/api/), mirror the validated default back into process.env so
+// Prisma can pick it up.
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = env.DATABASE_URL;
+}
+
 export const corsOrigins = env.CORS_ORIGINS.split(',')
   .map((s) => s.trim())
   .filter(Boolean);
