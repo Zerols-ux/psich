@@ -42,6 +42,23 @@ export interface User {
   avatarUrl: string | null;
   role: UserRole;
   createdAt: ISODateString;
+  updatedAt: ISODateString;
+}
+
+export interface AuthSuccess {
+  user: User;
+  accessToken: string;
+}
+
+export interface RegisterPayload {
+  email: string;
+  name: string;
+  password: string;
+}
+
+export interface LoginPayload {
+  email: string;
+  password: string;
 }
 
 export interface Category {

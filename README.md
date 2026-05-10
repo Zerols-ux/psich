@@ -71,6 +71,7 @@ npm run dev
 | `npm run lint`                      | ESLint у всіх workspace                            |
 | `npm run typecheck`                 | TypeScript перевірка у всіх workspace              |
 | `npm run format`                    | Prettier — відформатувати все                      |
+| `npm run -w @psich/api test`        | Vitest + supertest для API                         |
 | `npm run docker:up` / `docker:down` | Підняти / зупинити Postgres                        |
 | `npm run db:migrate`                | `prisma migrate dev` у `apps/api`                  |
 | `npm run db:push`                   | `prisma db push` (без міграції — для прототипу)    |
@@ -88,10 +89,30 @@ npm run dev
 | Heading font                  | Playfair Display     |
 | Body font                     | Inter                |
 
+## Auth (Phase 2.A)
+
+Доступні endpointи (всі повертають JSON):
+
+| Метод  | URL                  | Опис                                                        |
+| ------ | -------------------- | ----------------------------------------------------------- |
+| `POST` | `/api/auth/register` | Створює користувача, повертає access token + refresh cookie |
+| `POST` | `/api/auth/login`    | Логін за email + password                                   |
+| `POST` | `/api/auth/refresh`  | Обмінює refresh cookie на нову пару токенів (rotation)      |
+| `POST` | `/api/auth/logout`   | Відкликає refresh-token та очищає cookie                    |
+| `GET`  | `/api/auth/me`       | Повертає поточного користувача за Bearer-token              |
+
+- **Access token** — JWT (по замовчуванню 15 хвилин), фронт тримає в памʼяті (`AuthProvider`).
+- **Refresh token** — випадкова байтівка (`base64url`), зберігається в httpOnly cookie `psy_refresh`; в базі — лише SHA-256 хеш (`refresh_tokens`).
+- **Rotation** — кожен `/refresh` видає новий токен і позначає старий як `revoked_at`. Повторне використання відкликаного токена визнається як reuse і відкликає всі сесії користувача.
+- **Паролі** — bcrypt (12 rounds), зберігаються в `users.password_hash`.
+
+Для production CORS рекомендовано виставити `COOKIE_SECURE=true` і явний `COOKIE_DOMAIN`.
+
 ## Roadmap
 
-- **Phase 1 — Foundation (поточний PR):** monorepo, базові сторінки `apps/web`, skeleton `apps/admin`, healthcheck `apps/api`, Prisma schema, dev-середовище.
-- **Phase 2:** Auth (JWT + Google OAuth), CRUD курсів/уроків/категорій, сторінка курсу, базовий захищений кабінет.
+- **Phase 1 — Foundation:** monorepo, базові сторінки `apps/web`, skeleton `apps/admin`, healthcheck `apps/api`, Prisma schema, dev-середовище.
+- **Phase 2.A — Auth foundation (поточний PR):** JWT + bcrypt + refresh-token rotation, `/api/auth/*`, AuthProvider у web, сторінки `/login`, `/register`, захищений `/cabinet`, Vitest+supertest.
+- **Phase 2.B:** Google OAuth, CRUD курсів/уроків/категорій, сторінка курсу.
 - **Phase 3:** Платежі — LiqPay + Monobank Acquiring, ідемпотентний webhook, payment status polling.
 - **Phase 4:** Lesson player (YouTube/Markdown/PDF/Webinar), `LessonProgress`, генерація PDF-сертифікатів.
 - **Phase 5:** Адмін-панель (CRUD, користувачі, замовлення, аналітика, промокоди, email, блог).

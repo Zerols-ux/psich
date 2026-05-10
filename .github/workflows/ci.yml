@@ -12,8 +12,23 @@ concurrency:
 
 jobs:
   build:
-    name: Lint · Typecheck · Build
+    name: Lint · Typecheck · Build · Test
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: psich
+          POSTGRES_PASSWORD: psich
+          POSTGRES_DB: psich
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     env:
       DATABASE_URL: postgresql://psich:psich@localhost:5432/psich?schema=public
@@ -21,6 +36,8 @@ jobs:
       NEXT_PUBLIC_SITE_URL: http://localhost:3000
       NEXT_TELEMETRY_DISABLED: '1'
       TURBO_TELEMETRY_DISABLED: '1'
+      JWT_ACCESS_SECRET: ci-access-secret-1234567890
+      JWT_REFRESH_SECRET: ci-refresh-secret-1234567890
 
     steps:
       - name: Checkout
@@ -38,6 +55,9 @@ jobs:
       - name: Generate Prisma Client
         run: npm run db:generate
 
+      - name: Apply Prisma migrations
+        run: npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
+
       - name: Format check
         run: npm run format:check
 
@@ -49,3 +69,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Test (API)
+        run: npm run -w @psich/api test
