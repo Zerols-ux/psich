@@ -81,6 +81,33 @@ export interface Course {
   createdAt: ISODateString;
 }
 
+/** A course as returned by the public listing endpoint. */
+export interface CourseSummary extends Course {
+  category: Category | null;
+  lessonsCount: number;
+  hasFreeLessons: boolean;
+}
+
+/** Lesson preview safe to expose to anonymous users on the course page. */
+export interface LessonPreview {
+  id: UUID;
+  title: string;
+  type: LessonType;
+  isFree: boolean;
+  orderIndex: number;
+  webinarAt: ISODateString | null;
+  /** Only populated for free lessons; paid lessons hide content until purchase. */
+  contentMd: string | null;
+  /** Only populated for free lessons. */
+  youtubeUrl: string | null;
+}
+
+/** Course detail returned by `/api/courses/:slug`. */
+export interface CourseDetail extends Course {
+  category: Category | null;
+  lessons: LessonPreview[];
+}
+
 export interface Lesson {
   id: UUID;
   courseId: UUID;
@@ -94,6 +121,36 @@ export interface Lesson {
   isFree: boolean;
   orderIndex: number;
 }
+
+export interface CreateCategoryPayload {
+  name: string;
+  slug: string;
+}
+export type UpdateCategoryPayload = Partial<CreateCategoryPayload>;
+
+export interface CreateCoursePayload {
+  title: string;
+  slug: string;
+  description: string;
+  price: number;
+  thumbnailUrl?: string | null;
+  categoryId?: UUID | null;
+  isPublished?: boolean;
+}
+export type UpdateCoursePayload = Partial<CreateCoursePayload>;
+
+export interface CreateLessonPayload {
+  title: string;
+  type: LessonType;
+  isFree?: boolean;
+  orderIndex?: number;
+  youtubeUrl?: string | null;
+  contentMd?: string | null;
+  pdfUrl?: string | null;
+  meetLink?: string | null;
+  webinarAt?: ISODateString | null;
+}
+export type UpdateLessonPayload = Partial<CreateLessonPayload>;
 
 export interface Enrollment {
   id: UUID;

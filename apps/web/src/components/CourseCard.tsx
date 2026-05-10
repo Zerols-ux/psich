@@ -2,9 +2,28 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { formatUah, type MockCourse } from '@/lib/mock-courses';
+import type { CourseSummary } from '@psich/types';
+import { formatUah } from '@/lib/courses';
 
-export function CourseCard({ course }: { course: MockCourse }) {
+const CATEGORY_ICONS: Record<string, string> = {
+  self: '🧠',
+  'self-discovery': '🪞',
+  relations: '💜',
+  relationships: '💜',
+  anxiety: '✨',
+  stress: '✨',
+  trauma: '🌱',
+};
+
+function pickIcon(slug: string | undefined): string {
+  if (!slug) return '◇';
+  return CATEGORY_ICONS[slug] ?? '◇';
+}
+
+export function CourseCard({ course }: { course: CourseSummary }) {
+  const categoryName = course.category?.name ?? 'Без категорії';
+  const icon = pickIcon(course.category?.slug);
+
   return (
     <motion.article
       whileHover={{ y: -4 }}
@@ -13,13 +32,11 @@ export function CourseCard({ course }: { course: MockCourse }) {
     >
       <Link href={`/courses/${course.slug}`} className="flex h-full flex-col">
         <div className="flex h-44 items-center justify-center bg-gradient-to-br from-[#1A1A2E] to-[#2D1B4E] text-5xl text-violet">
-          <span aria-hidden>{course.icon}</span>
+          <span aria-hidden>{icon}</span>
         </div>
 
         <div className="flex flex-1 flex-col p-5">
-          <div className="text-[11px] uppercase tracking-[0.2em] text-violet">
-            {course.category}
-          </div>
+          <div className="text-[11px] uppercase tracking-[0.2em] text-violet">{categoryName}</div>
 
           <h3 className="mt-3 flex items-start gap-2 text-xl leading-snug">
             <span>{course.title}</span>
@@ -33,7 +50,9 @@ export function CourseCard({ course }: { course: MockCourse }) {
           <p className="mt-3 text-sm leading-relaxed text-text-muted">{course.description}</p>
 
           <div className="mt-auto flex items-center justify-between border-t border-card-border pt-4">
-            <span className="text-2xl font-semibold text-gold">{formatUah(course.price)}</span>
+            <span className="text-2xl font-semibold text-gold">
+              {course.price === 0 ? 'Безкоштовно' : formatUah(course.price)}
+            </span>
             <span className="text-xs text-text-dim">{course.lessonsCount} уроків</span>
           </div>
         </div>

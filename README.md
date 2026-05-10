@@ -52,7 +52,10 @@ npm run docker:up
 npm run db:generate
 npm run db:migrate
 
-# 5. Запустити всі застосунки в dev-режимі (Turborepo)
+# 5. Заповнити демо-даними (категорії + 4 курси)
+npm run db:seed
+
+# 6. Запустити всі застосунки в dev-режимі (Turborepo)
 npm run dev
 ```
 
@@ -75,6 +78,7 @@ npm run dev
 | `npm run docker:up` / `docker:down` | Підняти / зупинити Postgres                        |
 | `npm run db:migrate`                | `prisma migrate dev` у `apps/api`                  |
 | `npm run db:push`                   | `prisma db push` (без міграції — для прототипу)    |
+| `npm run db:seed`                   | Заповнити БД демо-категоріями та курсами           |
 
 ## Дизайн-система
 
@@ -107,6 +111,34 @@ npm run dev
 - **Паролі** — bcrypt (12 rounds), зберігаються в `users.password_hash`.
 
 Для production CORS рекомендовано виставити `COOKIE_SECURE=true` і явний `COOKIE_DOMAIN`.
+
+## Courses (Phase 2.B.1)
+
+Каталог курсів і сторінка курсу — публічні; запис/редагування — лише для адміністратора (`User.role = ADMIN`).
+
+| Метод    | URL                              | Доступ                       |
+| -------- | -------------------------------- | ---------------------------- |
+| `GET`    | `/api/categories`                | public                       |
+| `POST`   | `/api/categories`                | admin                        |
+| `PATCH`  | `/api/categories/:id`            | admin                        |
+| `DELETE` | `/api/categories/:id`            | admin                        |
+| `GET`    | `/api/courses?category=&search=` | public, тільки `isPublished` |
+| `GET`    | `/api/courses/:slug`             | public, тільки `isPublished` |
+| `GET`    | `/api/courses/admin`             | admin (включно з draft)      |
+| `POST`   | `/api/courses`                   | admin                        |
+| `PATCH`  | `/api/courses/:id`               | admin                        |
+| `DELETE` | `/api/courses/:id`               | admin                        |
+| `POST`   | `/api/courses/:courseId/lessons` | admin                        |
+| `PATCH`  | `/api/courses/lessons/:id`       | admin                        |
+| `DELETE` | `/api/courses/lessons/:id`       | admin                        |
+
+Для анонімних користувачів `GET /api/courses/:slug` повертає `contentMd` і `youtubeUrl` тільки для `isFree: true` уроків — це гарантує, що повний матеріал доступний лише після оплати.
+
+Щоб надати акаунту роль адміністратора локально:
+
+```sql
+UPDATE users SET role = 'ADMIN' WHERE email = 'you@example.com';
+```
 
 ## Roadmap
 

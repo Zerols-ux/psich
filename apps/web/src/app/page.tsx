@@ -1,11 +1,14 @@
 import { Hero } from '@/components/Hero';
 import { CourseCard } from '@/components/CourseCard';
 import { ScrollReveal } from '@/components/ScrollReveal';
-import { MOCK_COURSES } from '@/lib/mock-courses';
+import { listCourses } from '@/lib/courses';
 
-const featured = MOCK_COURSES.slice(0, 3);
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
-export default function HomePage() {
+export default async function HomePage() {
+  const featured = (await listCourses().catch(() => [])).slice(0, 3);
+
   return (
     <>
       <Hero />
@@ -22,13 +25,23 @@ export default function HomePage() {
           </p>
         </ScrollReveal>
 
-        <div className="mt-12 grid gap-6 md:grid-cols-3">
-          {featured.map((course, i) => (
-            <ScrollReveal key={course.id} delay={i * 0.05}>
-              <CourseCard course={course} />
-            </ScrollReveal>
-          ))}
-        </div>
+        {featured.length > 0 ? (
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            {featured.map((course, i) => (
+              <ScrollReveal key={course.id} delay={i * 0.05}>
+                <CourseCard course={course} />
+              </ScrollReveal>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-12 text-text-muted">
+            Курси з’являться найближчим часом. Зайдіть до{' '}
+            <a href="/courses" className="text-gold hover:underline">
+              каталогу
+            </a>
+            .
+          </p>
+        )}
       </section>
 
       <section id="about" className="border-y border-card-border/40 bg-bg-alt/40 py-24">
