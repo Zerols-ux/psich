@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState, type FormEvent } from 'react';
 import { AuthCard } from '@/components/AuthCard';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { useAuth } from '@/lib/auth-context';
 import { ApiCallError } from '@/lib/api';
 
@@ -40,37 +41,44 @@ function LoginForm() {
   }
 
   return (
-    <form className="space-y-4" onSubmit={onSubmit} noValidate>
-      <Field
-        label="Email"
-        type="email"
-        autoComplete="email"
-        value={email}
-        onChange={setEmail}
-        required
-      />
-      <Field
-        label="Пароль"
-        type="password"
-        autoComplete="current-password"
-        value={password}
-        onChange={setPassword}
-        required
-        minLength={1}
-      />
-      {error ? (
-        <p role="alert" className="text-sm text-red-400">
-          {error}
-        </p>
-      ) : null}
-      <button
-        type="submit"
-        disabled={submitting}
-        className="w-full rounded bg-gold py-3 text-sm font-semibold uppercase tracking-widest text-bg transition hover:bg-gold/90 disabled:opacity-60"
-      >
-        {submitting ? 'Входимо…' : 'Увійти'}
-      </button>
-    </form>
+    <div className="space-y-6">
+      <GoogleSignInButton next={next} />
+      <div className="relative text-center text-xs uppercase tracking-widest text-text-muted">
+        <span className="absolute inset-x-0 top-1/2 -z-10 h-px bg-card-border/60" aria-hidden />
+        <span className="bg-card/60 px-3">або</span>
+      </div>
+      <form className="space-y-4" onSubmit={onSubmit} noValidate>
+        <Field
+          label="Email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={setEmail}
+          required
+        />
+        <Field
+          label="Пароль"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={setPassword}
+          required
+          minLength={1}
+        />
+        {error ? (
+          <p role="alert" className="text-sm text-red-400">
+            {error}
+          </p>
+        ) : null}
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full rounded bg-gold py-3 text-sm font-semibold uppercase tracking-widest text-bg transition hover:bg-gold/90 disabled:opacity-60"
+        >
+          {submitting ? 'Входимо…' : 'Увійти'}
+        </button>
+      </form>
+    </div>
   );
 }
 

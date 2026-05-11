@@ -5,9 +5,12 @@ import { verifyAccessToken, type AccessTokenPayload } from '../lib/tokens.js';
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
-    interface Request {
-      user?: AccessTokenPayload;
-    }
+    // Align `req.user` with our JWT payload. Passport's `@types/passport`
+    // declares a separate `Express.User` interface that `Express.Request.user`
+    // references — by re-declaring it here as our access-token payload we
+    // get one consistent shape across the app.
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+    interface User extends AccessTokenPayload {}
   }
 }
 

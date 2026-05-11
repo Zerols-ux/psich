@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { corsOrigins, env } from './env.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import { passport } from './lib/passport.js';
 import authRouter from './routes/auth.js';
 import categoriesRouter from './routes/categories.js';
 import coursesRouter from './routes/courses.js';
@@ -24,6 +25,9 @@ export function createServer(): Express {
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
+  // Stateless passport — we never call passport.session(), the Google
+  // strategy hands its result straight to our route which mints our JWT.
+  app.use(passport.initialize());
 
   if (env.NODE_ENV !== 'test') {
     app.use(morgan(env.NODE_ENV === 'development' ? 'dev' : 'combined'));

@@ -5,6 +5,7 @@ import { createServer } from '../server.js';
 import { prisma } from '../lib/prisma.js';
 import { resetDb } from '../test/db.js';
 import { REFRESH_COOKIE_NAME } from '../lib/cookies.js';
+import { loginOrRegisterWithGoogle } from '../services/auth.service.js';
 
 let app: Express;
 
@@ -174,5 +175,83 @@ describe('POST /api/auth/logout', () => {
     // Refresh with the same token must now fail
     const after = await request(app).post('/api/auth/refresh').set('Cookie', cookie);
     expect(after.status).toBe(401);
+  });
+});
+
+describe('GET /api/auth/google', () => {
+  it('redirects to Google with the configured client_id and scopes', async () => {
+    const res = await request(app).get('/api/auth/google').redirects(0);
+    expect(res.status).toBe(302);
+    const loc = res.headers.location as string;
+    expect(loc).toMatch(/^https:\/\/accounts\.google\.com\/o\/oauth2\/v2\/auth/);
+    const parsed = new URL(loc);
+    expect(parsed.searchParams.get('client_id')).toBe('test-google-client-id');
+    expect(parsed.searchParams.get('response_type')).toBe('code');
+    expect(parsed.searchParams.get('scope')).toContain('email');
+    expect(parsed.searchParams.get('scope')).toContain('profile');
+    expect(parsed.searchParams.get('redirect_uri')).toBe(
+      'http://localhost:4000/api/auth/google/callback',
+    );
+  });
+});
+
+const GOOGLE_PROFILE = {
+  googleId: 'google-sub-123',
+  email: 'olha@gmail.com',
+  name: 'Olha Petrenko',
+  avatarUrl: 'https://example.com/avatar.png',
+};
+
+function ctx() {
+  return { prisma };
+}
+
+describe('loginOrRegisterWithGoogle', () => {
+  it('creates a brand-new STUDENT user with no passwordHash when none exists', async () => {
+    const session = await loginOrRegisterWithGoogle(ctx(), GOOGLE_PROFILE);
+    expect(session.user.email).toBe(GOOGLE_PROFILE.email);
+    expect(session.user.role).toBe('STUDENT');
+    expect(session.user.googleId).toBe(GOOGLE_PROFILE.googleId);
+    expect(session.user.passwordHash).toBeNull();
+    expect(session.accessToken).toEqual(expect.any(String));
+    expect(session.refreshToken).toEqual(expect.any(String));
+  });
+
+  it('returns the existing user when google_id already matches (idempotent)', async () => {
+    const first = await loginOrRegisterWithGoogle(ctx(), GOOGLE_PROFILE);
+    const second = await loginOrRegisterWithGoogle(ctx(), GOOGLE_PROFILE);
+    expect(second.user.id).toBe(first.user.id);
+    const count = await prisma.user.count({ where: { email: GOOGLE_PROFILE.email } });
+    expect(count).toBe(1);
+  });
+
+  it('links googleId to an existing password user with the same email', async () => {
+    const reg = await request(app).post('/api/auth/register').send(VALID).expect(201);
+    const existingId = reg.body.user.id;
+
+    const session = await loginOrRegisterWithGoogle(ctx(), {
+      googleId: 'google-sub-456',
+      email: VALID.email,
+      name: VALID.name,
+      avatarUrl: null,
+    });
+    expect(session.user.id).toBe(existingId);
+    expect(session.user.googleId).toBe('google-sub-456');
+    // Original password hash must NOT be wiped — they should still be able to
+    // sign in with their password going forward.
+    expect(session.user.passwordHash).not.toBeNull();
+  });
+
+  it('rejects logins on stored email if no googleId match and case differs (case-insensitive merge)', async () => {
+    await request(app).post('/api/auth/register').send(VALID).expect(201);
+    const session = await loginOrRegisterWithGoogle(ctx(), {
+      googleId: 'google-sub-789',
+      email: VALID.email.toUpperCase(),
+      name: 'Olha',
+      avatarUrl: null,
+    });
+    const count = await prisma.user.count({ where: { email: VALID.email } });
+    expect(count).toBe(1);
+    expect(session.user.googleId).toBe('google-sub-789');
   });
 });
