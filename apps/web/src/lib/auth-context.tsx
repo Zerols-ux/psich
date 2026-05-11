@@ -19,6 +19,12 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   register: (input: { email: string; name: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
+  /**
+   * Trigger a refresh against the existing `psy_refresh` cookie and load
+   * the user. Used by `/auth/google/callback` to pick up the session the API
+   * minted during the OAuth dance.
+   */
+  refreshSession: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -69,9 +75,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const refreshSession = useCallback(async () => {
+    try {
+      const session = await auth.refresh();
+      setAccessToken(session.accessToken);
+      setUser(session.user);
+      setStatus('authenticated');
+      return true;
+    } catch {
+      setAccessToken(null);
+      setUser(null);
+      setStatus('unauthenticated');
+      return false;
+    }
+  }, []);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, status, login, register, logout }),
-    [user, status, login, register, logout],
+    () => ({ user, status, login, register, logout, refreshSession }),
+    [user, status, login, register, logout, refreshSession],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

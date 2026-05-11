@@ -20,7 +20,11 @@ function refreshExpiry(): Date {
   return new Date(Date.now() + env.REFRESH_TOKEN_TTL_SECONDS * 1000);
 }
 
-async function createSession(ctx: AuthContext, user: User): Promise<AuthSession> {
+/**
+ * Creates a fresh access token + persisted refresh token for `user`. Exported
+ * so the OAuth route can reuse the same session shape as password login.
+ */
+export async function createSession(ctx: AuthContext, user: User): Promise<AuthSession> {
   const { token, tokenHash } = generateRefreshToken();
   await ctx.prisma.refreshToken.create({
     data: {
@@ -131,6 +135,65 @@ export async function logout(ctx: AuthContext, rawToken: string | undefined): Pr
     where: { tokenHash, revokedAt: null },
     data: { revokedAt: new Date() },
   });
+}
+
+/**
+ * Finds a user by their Google `sub` (`googleId`), falling back to their
+ * email. If found by email but not yet linked to a Google account, we attach
+ * the googleId. If neither match, we create a new STUDENT user with no
+ * password hash (Google-only login).
+ *
+ * Returns a fresh session like `register` / `login` do.
+ */
+export async function loginOrRegisterWithGoogle(
+  ctx: AuthContext,
+  profile: { googleId: string; email: string; name: string; avatarUrl: string | null },
+): Promise<AuthSession> {
+  const email = profile.email.toLowerCase().trim();
+
+  // Fast path: this Google account is already linked to a user.
+  const byGoogleId = await ctx.prisma.user.findUnique({ where: { googleId: profile.googleId } });
+  if (byGoogleId) {
+    return createSession(ctx, byGoogleId);
+  }
+
+  // User already exists via password login — link the Google account so they
+  // can sign in either way next time.
+  const byEmail = await ctx.prisma.user.findUnique({ where: { email } });
+  if (byEmail) {
+    const linked = await ctx.prisma.user.update({
+      where: { id: byEmail.id },
+      data: {
+        googleId: profile.googleId,
+        avatarUrl: byEmail.avatarUrl ?? profile.avatarUrl,
+      },
+    });
+    return createSession(ctx, linked);
+  }
+
+  // Brand-new signup via Google. No password hash — they must use Google
+  // (or hit /forgot-password in a later phase to set one).
+  try {
+    const user = await ctx.prisma.user.create({
+      data: {
+        email,
+        name: profile.name.trim() || email,
+        googleId: profile.googleId,
+        avatarUrl: profile.avatarUrl,
+      },
+    });
+    return createSession(ctx, user);
+  } catch (err) {
+    // Concurrent first-time Google sign-in for the same account: the unique
+    // googleId constraint fires on the second create. Retry the lookup once.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      const retry = await ctx.prisma.user.findFirst({
+        where: { OR: [{ googleId: profile.googleId }, { email }] },
+      });
+      if (retry) return createSession(ctx, retry);
+    }
+    throw err;
+  }
 }
 
 export function publicUser(user: User) {

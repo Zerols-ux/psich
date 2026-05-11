@@ -143,8 +143,9 @@ UPDATE users SET role = 'ADMIN' WHERE email = 'you@example.com';
 ## Roadmap
 
 - **Phase 1 — Foundation:** monorepo, базові сторінки `apps/web`, skeleton `apps/admin`, healthcheck `apps/api`, Prisma schema, dev-середовище.
-- **Phase 2.A — Auth foundation (поточний PR):** JWT + bcrypt + refresh-token rotation, `/api/auth/*`, AuthProvider у web, сторінки `/login`, `/register`, захищений `/cabinet`, Vitest+supertest.
-- **Phase 2.B:** Google OAuth, CRUD курсів/уроків/категорій, сторінка курсу.
+- **Phase 2.A — Auth foundation:** JWT + bcrypt + refresh-token rotation, `/api/auth/*`, AuthProvider у web, сторінки `/login`, `/register`, захищений `/cabinet`, Vitest+supertest.
+- **Phase 2.B.1 — Courses CRUD:** public/admin `GET/POST/PATCH/DELETE /api/courses|/lessons|/categories`, сторінка `/courses/[slug]`, seed-скрипт.
+- **Phase 2.B.2 — Google OAuth (поточний PR):** `passport-google-oauth20`, `/api/auth/google[/callback]`, кнопка «Увійти через Google» на `/login` і `/register`, лінк-or-create на існуючий email.
 - **Phase 3:** Платежі — LiqPay + Monobank Acquiring, ідемпотентний webhook, payment status polling.
 - **Phase 4:** Lesson player (YouTube/Markdown/PDF/Webinar), `LessonProgress`, генерація PDF-сертифікатів.
 - **Phase 5:** Адмін-панель (CRUD, користувачі, замовлення, аналітика, промокоди, email, блог).

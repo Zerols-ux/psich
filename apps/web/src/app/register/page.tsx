@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { AuthCard } from '@/components/AuthCard';
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { useAuth } from '@/lib/auth-context';
 import { ApiCallError } from '@/lib/api';
 
@@ -53,45 +54,52 @@ export default function RegisterPage() {
         </>
       }
     >
-      <form className="space-y-4" onSubmit={onSubmit} noValidate>
-        <Field
-          label="Імʼя"
-          autoComplete="name"
-          value={name}
-          onChange={setName}
-          required
-          minLength={2}
-        />
-        <Field
-          label="Email"
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={setEmail}
-          required
-        />
-        <Field
-          label="Пароль"
-          type="password"
-          autoComplete="new-password"
-          value={password}
-          onChange={setPassword}
-          required
-          minLength={8}
-        />
-        {error ? (
-          <p role="alert" className="text-sm text-red-400">
-            {error}
-          </p>
-        ) : null}
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded bg-gold py-3 text-sm font-semibold uppercase tracking-widest text-bg transition hover:bg-gold/90 disabled:opacity-60"
-        >
-          {submitting ? 'Створюємо…' : 'Зареєструватись'}
-        </button>
-      </form>
+      <div className="space-y-6">
+        <GoogleSignInButton />
+        <div className="relative text-center text-xs uppercase tracking-widest text-text-muted">
+          <span className="absolute inset-x-0 top-1/2 -z-10 h-px bg-card-border/60" aria-hidden />
+          <span className="bg-card/60 px-3">або</span>
+        </div>
+        <form className="space-y-4" onSubmit={onSubmit} noValidate>
+          <Field
+            label="Імʼя"
+            autoComplete="name"
+            value={name}
+            onChange={setName}
+            required
+            minLength={2}
+          />
+          <Field
+            label="Email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={setEmail}
+            required
+          />
+          <Field
+            label="Пароль"
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={setPassword}
+            required
+            minLength={8}
+          />
+          {error ? (
+            <p role="alert" className="text-sm text-red-400">
+              {error}
+            </p>
+          ) : null}
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full rounded bg-gold py-3 text-sm font-semibold uppercase tracking-widest text-bg transition hover:bg-gold/90 disabled:opacity-60"
+          >
+            {submitting ? 'Створюємо…' : 'Зареєструватись'}
+          </button>
+        </form>
+      </div>
     </AuthCard>
   );
 }

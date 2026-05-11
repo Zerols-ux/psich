@@ -29,6 +29,22 @@ const envSchema = z.object({
     .string()
     .default('false')
     .transform((v) => v === 'true' || v === '1'),
+  // Google OAuth (Phase 2.B.2). Both must be set for the /api/auth/google
+  // routes to be enabled; otherwise we 503. Empty string from .env is treated
+  // as unset.
+  GOOGLE_CLIENT_ID: z
+    .string()
+    .optional()
+    .transform((v) => (v && v.length > 0 ? v : undefined)),
+  GOOGLE_CLIENT_SECRET: z
+    .string()
+    .optional()
+    .transform((v) => (v && v.length > 0 ? v : undefined)),
+  GOOGLE_REDIRECT_URI: z.string().url().default('http://localhost:4000/api/auth/google/callback'),
+  // Where the API redirects the browser back to after the OAuth callback
+  // finishes setting the refresh cookie. Must be the public origin of the
+  // student-facing web app.
+  WEB_APP_URL: z.string().url().default('http://localhost:3000'),
 });
 
 const parsed = envSchema.safeParse(process.env);
