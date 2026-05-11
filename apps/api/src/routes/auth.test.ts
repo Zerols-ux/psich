@@ -1,10 +1,12 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
+import type { Profile } from 'passport-google-oauth20';
 import { createServer } from '../server.js';
 import { prisma } from '../lib/prisma.js';
 import { resetDb } from '../test/db.js';
 import { REFRESH_COOKIE_NAME } from '../lib/cookies.js';
+import { normalizeProfile } from '../lib/passport.js';
 import { loginOrRegisterWithGoogle } from '../services/auth.service.js';
 
 let app: Express;
@@ -253,5 +255,62 @@ describe('loginOrRegisterWithGoogle', () => {
     const count = await prisma.user.count({ where: { email: VALID.email } });
     expect(count).toBe(1);
     expect(session.user.googleId).toBe('google-sub-789');
+  });
+});
+
+function makeProfile(overrides: {
+  emailVerifiedJson?: boolean | string | undefined;
+  emailVerifiedEntry?: boolean | string | undefined;
+  email?: string | null;
+}): Profile {
+  return {
+    id: 'g-1',
+    provider: 'google',
+    displayName: 'Olha',
+    emails:
+      overrides.email === null
+        ? undefined
+        : ([
+            {
+              value: overrides.email ?? 'olha@example.com',
+              ...(overrides.emailVerifiedEntry !== undefined
+                ? { verified: overrides.emailVerifiedEntry }
+                : {}),
+            },
+          ] as Profile['emails']),
+    _json: {
+      email_verified: overrides.emailVerifiedJson,
+    },
+  } as unknown as Profile;
+}
+
+describe('normalizeProfile (Google email verification)', () => {
+  it('accepts profiles with email_verified=true on _json', () => {
+    const result = normalizeProfile(makeProfile({ emailVerifiedJson: true }));
+    expect(result.email).toBe('olha@example.com');
+  });
+
+  it('accepts profiles with verified=true on the email entry', () => {
+    const result = normalizeProfile(makeProfile({ emailVerifiedEntry: true }));
+    expect(result.email).toBe('olha@example.com');
+  });
+
+  it('accepts string "true" from older passport responses', () => {
+    const result = normalizeProfile(makeProfile({ emailVerifiedJson: 'true' }));
+    expect(result.email).toBe('olha@example.com');
+  });
+
+  it('rejects profiles when email_verified is false', () => {
+    expect(() => normalizeProfile(makeProfile({ emailVerifiedJson: false }))).toThrow(
+      /not verified/,
+    );
+  });
+
+  it('rejects profiles where the verified flag is absent (fail closed)', () => {
+    expect(() => normalizeProfile(makeProfile({}))).toThrow(/not verified/);
+  });
+
+  it('rejects profiles that did not return an email', () => {
+    expect(() => normalizeProfile(makeProfile({ email: null }))).toThrow(/did not return an email/);
   });
 });

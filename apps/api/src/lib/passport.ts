@@ -51,12 +51,20 @@ export function configureGoogleStrategy(): void {
  * Pulls the fields we actually need out of the Google profile and validates
  * that the email is present + verified. Google occasionally returns accounts
  * without an email scope granted, which we have to reject — we have no other
- * way to link to an existing user.
+ * way to link to an existing user. We also require `email_verified=true`:
+ * `loginOrRegisterWithGoogle` auto-links by email, so an unverified email
+ * would let an attacker register an unverified Google account under someone
+ * else's address and silently link to their existing password user.
+ *
+ * Exported for unit tests.
  */
-function normalizeProfile(profile: Profile): GoogleOAuthProfile {
+export function normalizeProfile(profile: Profile): GoogleOAuthProfile {
   const email = profile.emails?.find((e) => e.value)?.value;
   if (!email) {
     throw new Error('Google account did not return an email address');
+  }
+  if (!isEmailVerified(profile, email)) {
+    throw new Error('Google email address is not verified');
   }
   const name =
     profile.displayName ||
@@ -69,6 +77,25 @@ function normalizeProfile(profile: Profile): GoogleOAuthProfile {
     name,
     avatarUrl,
   };
+}
+
+/**
+ * Reads the `email_verified` flag from the Google profile. The OpenID userinfo
+ * response and the OAuth2 v3 userinfo endpoint both put this in
+ * `profile._json.email_verified` (boolean, sometimes a string "true"); newer
+ * passport versions also expose it as `verified` on each email entry. Accept
+ * either, defaulting to `false` when neither is present.
+ */
+function isEmailVerified(profile: Profile, email: string): boolean {
+  const entry = profile.emails?.find((e) => e.value === email) as
+    | { value: string; verified?: boolean | string }
+    | undefined;
+  if (entry && entry.verified !== undefined) {
+    return entry.verified === true || entry.verified === 'true';
+  }
+  const json = (profile as { _json?: { email_verified?: boolean | string } })._json;
+  const flag = json?.email_verified;
+  return flag === true || flag === 'true';
 }
 
 export { passport };

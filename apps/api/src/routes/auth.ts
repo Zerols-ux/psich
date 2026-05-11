@@ -2,6 +2,7 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { env } from '../env.js';
+import { logger } from '../lib/logger.js';
 import { HttpError } from '../middleware/errorHandler.js';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
@@ -163,7 +164,13 @@ router.get(
             setRefreshCookie(res, session.refreshToken);
             res.redirect(buildWebRedirect('ok'));
           } catch (e) {
-            next(e);
+            // The browser is mid-redirect from Google — the JSON error handler
+            // would render raw text in the address bar. Keep the UX consistent
+            // with the other two error branches and send the user back to the
+            // web app's callback page with a generic error code. Log so we can
+            // still chase down the underlying failure.
+            logger.error({ err: e }, 'google oauth callback: account create/link failed');
+            res.redirect(buildWebRedirect('error', 'internal_error'));
           }
         })();
       },
